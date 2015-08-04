@@ -34,7 +34,8 @@ int main(int argc, char* argv[])
 void RunObjectness(CStr &resName, double base, int W, int NSS, int numPerSz)
 {
     srand((unsigned int)time(NULL));
-    DataSetVOC voc2007("/home/bittnt/BING/BING_beta1/VOC/VOC2007/");
+    //DataSetVOC voc2007("/home/bittnt/BING/BING_beta1/VOC/VOC2007/");
+    DataSetVOC voc2007("/home/lin/data/VOCdevkit2007/VOC2007/");
     voc2007.loadAnnotations();
     //voc2007.loadDataGenericOverCls();
 
