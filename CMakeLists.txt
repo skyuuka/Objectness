@@ -15,3 +15,6 @@ list( APPEND CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS} -fopenmp -ftree-vect
 include_directories( "include" )
 add_subdirectory (src)
 add_subdirectory (tools)
+
+file(GLOB INC_FILES include/*.h include/*.hpp)
+install (FILES ${INC_FILES} DESTINATION include/bingojectness)

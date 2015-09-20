@@ -1,1 +1,1 @@
-add_library (BLAS daxpy.c ddot.c dnrm2.c dscal.c)
+add_library (bing_objectness_blas daxpy.c ddot.c dnrm2.c dscal.c)
