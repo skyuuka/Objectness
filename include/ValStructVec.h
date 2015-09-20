@@ -1,5 +1,5 @@
-#pragma once
-
+#ifndef VALSTRUCTVEC_H
+#define VALSTRUCTVEC_H
 /************************************************************************/
 /* A value struct vector that supports efficient sorting                */
 /************************************************************************/
@@ -70,3 +70,4 @@ void valStructVecDemo()
 		printf("%d, %s\n", sVals(i), _S(sVals[i]));
 }
 */
+#endif

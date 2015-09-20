@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CMSHOW_H
+#define CMSHOW_H
 class CmShow
 {
 public:
@@ -6,4 +7,4 @@ public:
 	static void showTinyMat(CStr &title, CMat &m);
 	static inline void SaveShow(CMat& img, CStr& title);
 };
-
+#endif

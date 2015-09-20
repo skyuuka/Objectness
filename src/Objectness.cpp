@@ -1,3 +1,4 @@
+#include "LibLinear/linear.h"
 #include "kyheader.h"
 #include "Objectness.h"
 #include "CmShow.h"

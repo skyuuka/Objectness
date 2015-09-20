@@ -1,5 +1,5 @@
-#pragma once
-
+#ifndef DATASETVOC_H
+#define DATASETVOC_H
 struct DataSetVOC
 {
 	DataSetVOC(CStr &wkDir);
@@ -69,3 +69,4 @@ double DataSetVOC::interUnio(const Vec4i &bb, const Vec4i &bbgt)
 	}	
 	return ov;
 }
+#endif

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CMFILE_H 
+#define CMFILE_H
 #ifdef _WIN32
 #include <windows.h>
 #else
@@ -73,3 +74,4 @@ string CmFile::GetExtention(CStr name)
 /************************************************************************/
 /*                   Implementations                                    */
 /************************************************************************/
+#endif

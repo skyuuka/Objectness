@@ -3,7 +3,6 @@
 #include "ValStructVec.h"
 #include "CmShow.h"
 
-
 void RunObjectness(CStr &resName, double base, int W, int NSS, int numPerSz);
 
 void illutrateLoG()

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CMTIMER_H
+#define CMTIMER_H
 #include <sys/time.h>
 class CmTimer
 {
@@ -87,3 +88,4 @@ float CmTimer::TimeInSeconds()
     //return float(cumulative_clock) / CLOCKS_PER_SEC;
 }
 
+#endif

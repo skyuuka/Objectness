@@ -1,5 +1,5 @@
-#pragma once
-
+#ifndef FILTERTIG
+#define FILTERTIG
 class FilterTIG
 {
 public:
@@ -43,3 +43,4 @@ inline float FilterTIG::dot(const INT64 tig1, const INT64 tig2, const INT64 tig4
 
 	return _coeffs1[0] * (bc01 + bc02 + bc04 + bc08) + _coeffs1[1] * (bc11 + bc12 + bc14 + bc18);
 }
+#endif

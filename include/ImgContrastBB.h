@@ -1,5 +1,5 @@
-#pragma once
-
+#ifndef IMGCONTRASTBB_H
+#define IMGCONTRASTBB_H
 struct ImgContrastBB
 {
 	ImgContrastBB(CStr &imgPath);
@@ -60,3 +60,4 @@ void ImgContrastBB::assertBBox(Vec4i &center, CStr &name)
 	if (center[0] < 1 || center[1] < 1 || center[2] > _w || center[3] > _h)
 		printf("%s: (%d, %d, %d, %d), (%d, %d)\n", _S(name), center[0], center[1], center[2], center[3], _w, _h);
 }
+#endif

@@ -1,4 +1,4 @@
-#pragma once
+#ifndef OBJECTNESS_H
 #include "DataSetVOC.h"
 #include "ValStructVec.h"
 #include "FilterTIG.h"
@@ -113,4 +113,4 @@ private: // Help functions
 
 	vecD getVector(CMat &t1f);
 };
-
+#endif
