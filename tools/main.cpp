@@ -41,7 +41,7 @@ void RunObjectness(CStr &resName, double base, int W, int NSS, int numPerSz)
     printf("Dataset:`%s' with %d training and %d testing\n", _S(voc2007.wkDir), voc2007.trainNum, voc2007.testNum);
     printf("%s Base = %g, W = %d, NSS = %d, perSz = %d\n", _S(resName), base, W, NSS, numPerSz);
 
-    Objectness objNess(voc2007, base, W, NSS);
+    Objectness objNess(&voc2007, base, W, NSS);
 
     vector<vector<Vec4i>> boxesTests;
     //objNess.getObjBndBoxesForTests(boxesTests, 250);

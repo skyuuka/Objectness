@@ -2,11 +2,14 @@
 #include "DataSetVOC.h"
 #include "ValStructVec.h"
 #include "FilterTIG.h"
+#include "utils.hpp"
+#include <memory>
+
 class Objectness
 {
 public:
 	// base for window size quantization, feature window size (W, W), and non-maximal suppress size NSS
-	Objectness(DataSetVOC &voc, double base = 2, int W = 8, int NSS = 2);
+	Objectness(DataSetVOC *voc, double base = 2, int W = 8, int NSS = 2);
 	~Objectness(void);
 
 	// Load trained model. 
@@ -61,7 +64,7 @@ private: // Parameters
 	int _Clr; //
 	static const char* _clrName[3];
 	
-	DataSetVOC &_voc; // The dataset for training, testing
+    std::shared_ptr<DataSetVOC> _voc; // The dataset for training, testing
 	string _modelName, _trainDirSI, _bbResDir;
 
 	vecI _svmSzIdxs; // Indexes of active size. It's equal to _svmFilters.size() and _svmReW1f.rows
@@ -77,7 +80,12 @@ private: // Help functions
 
 	Mat getFeature(CMat &img3u, const Vec4i &bb); // Return region feature
 	
-	inline double maxIntUnion(const Vec4i &bb, const vector<Vec4i> &bbgts) {double maxV = 0; for(size_t i = 0; i < bbgts.size(); i++) maxV = max(maxV, DataSetVOC::interUnio(bb, bbgts[i])); return maxV; }
+	inline double maxIntUnion(const Vec4i &bb, const vector<Vec4i> &bbgts) {
+        double maxV = 0; 
+        for(size_t i = 0; i < bbgts.size(); i++)
+            maxV = max(maxV, bbox_overlap(bb, bbgts[i])); 
+        return maxV; 
+    }
 	
 	// Convert VOC bounding box type to OpenCV Rect
 	inline Rect pnt2Rect(const Vec4i &bb){int x = bb[0] - 1, y = bb[1] - 1; return Rect(x, y, bb[2] -  x, bb[3] - y);}

@@ -2,6 +2,7 @@
 #include "kyheader.h"
 #include "Objectness.h"
 #include "CmShow.h"
+#include "utils.hpp"
 
 #define Malloc(type,n) (type *)malloc((n)*sizeof(type))
 void print_null(const char *s) {}
@@ -14,7 +15,7 @@ const char* COLORs[CN] = {"'k'", "'b'", "'g'", "'r'", "'c'", "'m'", "'y'",
 
 
 // base for window size quantization, R orientation channels, and feature window size (_W, _W)
-Objectness::Objectness(DataSetVOC &voc, double base, int W, int NSS)
+Objectness::Objectness(DataSetVOC *voc, double base, int W, int NSS)
 	: _voc(voc)
 	, _base(base)
 	, _W(W)
@@ -35,9 +36,9 @@ Objectness::~Objectness(void)
 void Objectness::setColorSpace(int clr)
 {
 	_Clr = clr;
-	_modelName = _voc.resDir + format("ObjNessB%gW%d%s", _base, _W, _clrName[_Clr]);
-	_trainDirSI = _voc.localDir + format("TrainS1B%gW%d%s/", _base, _W, _clrName[_Clr]);
-	_bbResDir = _voc.resDir + format("BBoxesB%gW%d%s/", _base, _W, _clrName[_Clr]);
+	_modelName = _voc->resDir + format("ObjNessB%gW%d%s", _base, _W, _clrName[_Clr]);
+	_trainDirSI = _voc->localDir + format("TrainS1B%gW%d%s/", _base, _W, _clrName[_Clr]);
+	_bbResDir = _voc->resDir + format("BBoxesB%gW%d%s/", _base, _W, _clrName[_Clr]);
 }
 
 int Objectness::loadTrainedModel(string modelName) // Return -1, 0, or 1 if partial, none, or all loaded
@@ -55,7 +56,7 @@ int Objectness::loadTrainedModel(string modelName) // Return -1, 0, or 1 if part
 	//normalize(filters1f, filters1f, p, 1, NORM_MINMAX);
 
 	normalize(filters1f, show3u, 1, 255, NORM_MINMAX, CV_8U);
-	CmShow::showTinyMat(_voc.resDir + "Filter.png", show3u);
+	CmShow::showTinyMat(_voc->resDir + "Filter.png", show3u);
     _tigF.update(filters1f);
     _tigF.reconstruct(filters1f);
 
@@ -87,7 +88,7 @@ void Objectness::predictBBoxSI(CMat &img3u, ValStructVec<float, Vec4i> &valBoxes
 		resize(img3u, im3u, Size(cvRound(_W*imgW*1.0/width), cvRound(_W*imgH*1.0/height)));
 		gradientMag(im3u, mag1u);
 		
-		//imwrite(_voc.localDir + format("%d.png", r), mag1u);	
+		//imwrite(_voc->localDir + format("%d.png", r), mag1u);	
         //Mat mag1f;
         //mag1u.convertTo(mag1f, CV_32F);
         //matchTemplate(mag1f, _svmFilter, matchCost1f, CV_TM_CCORR);
@@ -319,7 +320,7 @@ void Objectness::trainObjectness(int numDetPerSize)
 
 void Objectness::generateTrianData()
 {
-	const int NUM_TRAIN = _voc.trainNum;
+	const int NUM_TRAIN = _voc->trainNum;
 	const int FILTER_SZ = _W*_W;
 	vector<vector<Mat>> xTrainP(NUM_TRAIN), xTrainN(NUM_TRAIN);
 	vector<vecI> szTrainP(NUM_TRAIN); // Corresponding size index. 
@@ -327,15 +328,15 @@ void Objectness::generateTrianData()
 
 #pragma omp parallel for
 	for (int i = 0; i < NUM_TRAIN; i++)	{
-		const int NUM_GT_BOX = (int)_voc.gtTrainBoxes[i].size();
+		const int NUM_GT_BOX = (int)_voc->gtTrainBoxes[i].size();
 		vector<Mat> &xP = xTrainP[i], &xN = xTrainN[i];
 		vecI &szP = szTrainP[i];
 		xP.reserve(NUM_GT_BOX*4), szP.reserve(NUM_GT_BOX*4), xN.reserve(NUM_NEG_BOX);
-		Mat im3u = imread(format(_S(_voc.imgPathW), _S(_voc.trainSet[i])));
+		Mat im3u = imread(format(_S(_voc->imgPathW), _S(_voc->trainSet[i])));
 
 		// Get positive training data
 		for (int k = 0; k < NUM_GT_BOX; k++){
-			const Vec4i& bbgt =  _voc.gtTrainBoxes[i][k];
+			const Vec4i& bbgt =  _voc->gtTrainBoxes[i][k];
 			vector<Vec4i> bbs; // bounding boxes;
 			vecI bbR; // Bounding box ratios
 			int nS = gtBndBoxSampling(bbgt, bbs, bbR);
@@ -355,7 +356,7 @@ void Objectness::generateTrianData()
 			int x1 = rand() % im3u.cols + 1, x2 = rand() % im3u.cols + 1;
 			int y1 = rand() % im3u.rows + 1, y2 = rand() % im3u.rows + 1;
 			Vec4i bb(min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2));
-			if (maxIntUnion(bb, _voc.gtTrainBoxes[i]) < 0.5)
+			if (maxIntUnion(bb, _voc->gtTrainBoxes[i]) < 0.5)
 				xN.push_back(getFeature(im3u, bb));
 		}
 	}
@@ -410,27 +411,9 @@ int Objectness::gtBndBoxSampling(const Vec4i &bbgt, vector<Vec4i> &samples, vecI
 	for (int h = hMin; h <= hMax; h++) for (int w = wMin; w <= wMax; w++){
 		int wT = tLen(w) - 1, hT = tLen(h) - 1;
 		Vec4i bb(bbgt[0], bbgt[1], bbgt[0] + wT, bbgt[1] + hT);
-		if (DataSetVOC::interUnio(bb, bbgt) >= 0.5){
+		if (bbox_overlap(bb, bbgt) >= 0.5){
 			samples.push_back(bb);
 			bbR.push_back(sz2idx(w, h));
-			//if (bbgt[3] > hT){
-			//	bb = Vec4i(bbgt[0], bbgt[3] - hT, bbgt[0] + wT, bbgt[3]);
-			//	CV_Assert(DataSetVOC::interUnio(bb, bbgt) >= 0.5);
-			//	samples.push_back(bb);
-			//	bbR.push_back(sz2idx(w, h));
-			//}
-			//if (bbgt[2] > wT){
-			//	bb = Vec4i(bbgt[2] - wT, bbgt[1], bbgt[2], bbgt[1] + hT);
-			//	CV_Assert(DataSetVOC::interUnio(bb, bbgt) >= 0.5);
-			//	samples.push_back(bb);
-			//	bbR.push_back(sz2idx(w, h));
-			//}
-			//if (bbgt[2] > wT && bbgt[3] > hT){
-			//	bb = Vec4i(bbgt[2] - wT, bbgt[3] - hT, bbgt[2], bbgt[3]);
-			//	CV_Assert(DataSetVOC::interUnio(bb, bbgt) >= 0.5);
-			//	samples.push_back(bb);
-			//	bbR.push_back(sz2idx(w, h));
-			//}
 		}
 	}
 	return samples.size();
@@ -439,17 +422,17 @@ int Objectness::gtBndBoxSampling(const Vec4i &bbgt, vector<Vec4i> &samples, vecI
 void Objectness::trainStateII(int numPerSz)
 {
 	loadTrainedModel();
-	const int NUM_TRAIN = _voc.trainNum;
+	const int NUM_TRAIN = _voc->trainNum;
 	vector<vecI> SZ(NUM_TRAIN), Y(NUM_TRAIN);
 	vector<vecF> VAL(NUM_TRAIN);
 
 #pragma omp parallel for
-	for (int i = 0; i < _voc.trainNum; i++)	{
-		const vector<Vec4i> &bbgts = _voc.gtTrainBoxes[i];
+	for (int i = 0; i < _voc->trainNum; i++)	{
+		const vector<Vec4i> &bbgts = _voc->gtTrainBoxes[i];
 		ValStructVec<float, Vec4i> valBoxes;
 		vecI &sz = SZ[i], &y = Y[i];
 		vecF &val = VAL[i];
-		CStr imgPath = format(_S(_voc.imgPathW), _S(_voc.trainSet[i]));
+		CStr imgPath = format(_S(_voc->imgPathW), _S(_voc->trainSet[i]));
 		predictBBoxSI(imread(imgPath), valBoxes, sz, numPerSz, false);
 		const int num = valBoxes.size();
 		CV_Assert(sz.size() == num);
@@ -486,7 +469,7 @@ void Objectness::trainStateII(int numPerSz)
 	for (int i = 0; i < NUM_SZ; i++){
 		const vecM &xP = rXP[i], &xN = rXN[i];
 		if (xP.size() < 10 || xN.size() < 10)
-			printf("Warning %s:%d not enough training sample for r[%d] = %d. P = %d, N = %d\n", __FILE__, __LINE__, i, _svmSzIdxs[i], xP.size(), xN.size());	
+			printf("Warning %s:%d not enough training sample for r[%d] = %d. P = %zd, N = %zd\n", __FILE__, __LINE__, i, _svmSzIdxs[i], xP.size(), xN.size());	
 		for (size_t k = 0; k < xP.size(); k++)
 			CV_Assert(xP[k].size() == Size(1, 1) && xP[k].type() == CV_32F);
 
@@ -534,9 +517,9 @@ void Objectness::illustrate()
 	stdDevP.reshape(1, _W).copyTo(stdDev.colRange(0, _W));
 	stdDevN.reshape(1, _W).copyTo(stdDev.colRange(_W, _W*2));
 	normalize(meanV, meanV, 0, 255, NORM_MINMAX, CV_8U);
-	CmShow::showTinyMat(_voc.resDir + "PosNeg.png", meanV);
+	CmShow::showTinyMat(_voc->resDir + "PosNeg.png", meanV);
 	
-	FILE* f = fopen(_S(_voc.resDir + "PosNeg.m"), "w"); 
+	FILE* f = fopen(_S(_voc->resDir + "PosNeg.m"), "w"); 
 	CV_Assert(f != NULL);
 	fprintf(f, "figure(1);\n\n");
 	PrintVector(f, getVector(meanP), "MeanP");
@@ -654,14 +637,14 @@ Mat Objectness::trainSVM(const vector<Mat> &pX1f, const vector<Mat> &nX1f, int s
 // Get potential bounding boxes for all test images
 void Objectness::getObjBndBoxesForTests(vector<vector<Vec4i>> &_boxesTests, int numDetPerSize)
 {
-	const int TestNum = _voc.testSet.size();
+	const int TestNum = _voc->testSet.size();
 	vecM imgs3u(TestNum);
 	vector<ValStructVec<float, Vec4i>> boxesTests;
 	boxesTests.resize(TestNum);
 
 #pragma omp parallel for
 	for (int i = 0; i < TestNum; i++){
-		imgs3u[i] = imread(format(_S(_voc.imgPathW), _S(_voc.testSet[i])));
+		imgs3u[i] = imread(format(_S(_voc->imgPathW), _S(_voc->testSet[i])));
 		boxesTests[i].reserve(10000);
 	}
 
@@ -688,7 +671,7 @@ void Objectness::getObjBndBoxesForTests(vector<vector<Vec4i>> &_boxesTests, int 
 	CmFile::MkDir(_bbResDir);
 #pragma omp parallel for
 	for (int i = 0; i < TestNum; i++){
-		CStr fName = _bbResDir + _voc.testSet[i];
+		CStr fName = _bbResDir + _voc->testSet[i];
 		ValStructVec<float, Vec4i> &boxes = boxesTests[i];
 		FILE *f = fopen(_S(fName + ".txt"), "w");
 		fprintf(f, "%d\n", boxes.size());
@@ -722,14 +705,14 @@ void Objectness::getObjBndBoxesForTestsFast(vector<vector<Vec4i>> &_boxesTests, 
 	illustrate();
 
 
-	const int TestNum = _voc.testSet.size();
+	const int TestNum = _voc->testSet.size();
 	vecM imgs3u(TestNum);
 	vector<ValStructVec<float, Vec4i>> boxesTests;
 	boxesTests.resize(TestNum);
 
 #pragma omp parallel for
 	for (int i = 0; i < TestNum; i++){
-		imgs3u[i] = imread(format(_S(_voc.imgPathW), _S(_voc.testSet[i])));
+		imgs3u[i] = imread(format(_S(_voc->imgPathW), _S(_voc->testSet[i])));
 		boxesTests[i].reserve(10000);
 	}
 
@@ -749,7 +732,7 @@ void Objectness::getObjBndBoxesForTestsFast(vector<vector<Vec4i>> &_boxesTests, 
 
 #pragma omp parallel for
 	for (int i = 0; i < TestNum; i++){
-		CStr fName = _bbResDir + _voc.testSet[i];
+		CStr fName = _bbResDir + _voc->testSet[i];
 		ValStructVec<float, Vec4i> &boxes = boxesTests[i];
 		FILE *f = fopen(_S(fName + ".txt"), "w");
 		fprintf(f, "%d\n", boxes.size());
@@ -768,11 +751,11 @@ void Objectness::getObjBndBoxesForTestsFast(vector<vector<Vec4i>> &_boxesTests, 
 
 void Objectness::getRandomBoxes(vector<vector<Vec4i>> &boxesTests, int num)
 {
-	const int TestNum = _voc.testSet.size();
+	const int TestNum = _voc->testSet.size();
 	boxesTests.resize(TestNum);
 #pragma omp parallel for
 	for (int i = 0; i < TestNum; i++){
-		Mat imgs3u = imread(format(_S(_voc.imgPathW), _S(_voc.testSet[i])));
+		Mat imgs3u = imread(format(_S(_voc->imgPathW), _S(_voc->testSet[i])));
 		int H = imgs3u.cols, W = imgs3u.rows;
 		boxesTests[i].reserve(num);
 		for (int k = 0; k < num; k++){
@@ -788,9 +771,9 @@ void Objectness::evaluatePerImgRecall(const vector<vector<Vec4i>> &boxesTests, C
 {
 	vecD recalls(NUM_WIN);
 	vecD avgScore(NUM_WIN);
-	const int TEST_NUM = _voc.testSet.size();
+	const int TEST_NUM = _voc->testSet.size();
 	for (int i = 0; i < TEST_NUM; i++){
-		const vector<Vec4i> &boxesGT = _voc.gtTestBoxes[i];
+		const vector<Vec4i> &boxesGT = _voc->gtTestBoxes[i];
 		const vector<Vec4i> &boxes = boxesTests[i];
 		const int gtNumCrnt = boxesGT.size();
 		vecI detected(gtNumCrnt);
@@ -804,7 +787,7 @@ void Objectness::evaluatePerImgRecall(const vector<vector<Vec4i>> &boxesTests, C
 			}
 
 			for (int k = 0; k < gtNumCrnt; k++)	{
-				double s = DataSetVOC::interUnio(boxes[j], boxesGT[k]);
+				double s = bbox_overlap(boxes[j], boxesGT[k]);
 				score[k] = max(score[k], s);
 				detected[k] = score[k] >= 0.5 ? 1 : 0;
 			}
@@ -829,7 +812,7 @@ void Objectness::evaluatePerImgRecall(const vector<vector<Vec4i>> &boxesTests, C
 	}
 	printf("\n");
 	
-	FILE* f = fopen(_S(_voc.resDir + saveName), "w"); 
+	FILE* f = fopen(_S(_voc->resDir + saveName), "w"); 
 	CV_Assert(f != NULL);
 	fprintf(f, "figure(1);\n\n");
 	PrintVector(f, recalls, "DR");
@@ -840,14 +823,14 @@ void Objectness::evaluatePerImgRecall(const vector<vector<Vec4i>> &boxesTests, C
 
 void Objectness::illuTestReults(const vector<vector<Vec4i>> &boxesTests)
 {
-	CStr resDir = _voc.localDir + "ResIlu/";
+	CStr resDir = _voc->localDir + "ResIlu/";
 	CmFile::MkDir(resDir);
-	const int TEST_NUM = _voc.testSet.size();
+	const int TEST_NUM = _voc->testSet.size();
 	for (int i = 0; i < TEST_NUM; i++){
-		const vector<Vec4i> &boxesGT = _voc.gtTestBoxes[i];
+		const vector<Vec4i> &boxesGT = _voc->gtTestBoxes[i];
 		const vector<Vec4i> &boxes = boxesTests[i];
 		const int gtNumCrnt = boxesGT.size();
-		CStr imgPath = format(_S(_voc.imgPathW), _S(_voc.testSet[i]));
+		CStr imgPath = format(_S(_voc->imgPathW), _S(_voc->testSet[i]));
 		CStr resNameNE = CmFile::GetNameNE(imgPath);
 		Mat img = imread(imgPath);
 		Mat bboxMatchImg = Mat::zeros(img.size(), CV_32F);
@@ -857,7 +840,7 @@ void Objectness::illuTestReults(const vector<vector<Vec4i>> &boxesTests)
 		for (int j = 0; j < boxes.size(); j++){
 			const Vec4i &bb = boxes[j];
 			for (int k = 0; k < gtNumCrnt; k++)	{
-				double mVal = DataSetVOC::interUnio(boxes[j], boxesGT[k]);
+				double mVal = bbox_overlap(boxes[j], boxesGT[k]);
 				if (mVal < score[k])
 					continue;
 				score[k] = mVal;
@@ -878,12 +861,12 @@ void Objectness::illuTestReults(const vector<vector<Vec4i>> &boxesTests)
 
 void Objectness::evaluatePerClassRecall(vector<vector<Vec4i>> &boxesTests, CStr &saveName, const int WIN_NUM) 
 {
-	const int TEST_NUM = _voc.testSet.size(), CLS_NUM = _voc.classNames.size();
+	const int TEST_NUM = _voc->testSet.size(), CLS_NUM = _voc->classNames.size();
 	if (boxesTests.size() != TEST_NUM){
 		boxesTests.resize(TEST_NUM);
 		for (int i = 0; i < TEST_NUM; i++){
 			Mat boxes;
-			matRead(_voc.localDir + _voc.testSet[i] + ".dat", boxes);
+			matRead(_voc->localDir + _voc->testSet[i] + ".dat", boxes);
 			Vec4i* d = (Vec4i*)boxes.data;
 			boxesTests[i].resize(boxes.rows, WIN_NUM);
 			memcpy(&boxesTests[i][0], boxes.data, sizeof(Vec4i)*boxes.rows);
@@ -892,7 +875,7 @@ void Objectness::evaluatePerClassRecall(vector<vector<Vec4i>> &boxesTests, CStr 
 
 	for (int i = 0; i < TEST_NUM; i++)
 		if ((int)boxesTests[i].size() < WIN_NUM){
-			printf("%s.dat: %d, %d\n", _S(_voc.testSet[i]), boxesTests[i].size(), WIN_NUM);
+			printf("%s.dat: %zd, %d\n", _S(_voc->testSet[i]), boxesTests[i].size(), WIN_NUM);
 			boxesTests[i].resize(WIN_NUM);
 		}
 	
@@ -902,8 +885,8 @@ void Objectness::evaluatePerClassRecall(vector<vector<Vec4i>> &boxesTests, CStr 
 	vecD gtNums(CLS_NUM); {
 		for (int i = 0; i < TEST_NUM; i++){
 			const vector<Vec4i> &boxes = boxesTests[i];
-			const vector<Vec4i> &boxesGT = _voc.gtTestBoxes[i];
-			const vecI &clsGT = _voc.gtTestClsIdx[i];
+			const vector<Vec4i> &boxesGT = _voc->gtTestBoxes[i];
+			const vecI &clsGT = _voc->gtTestClsIdx[i];
 			CV_Assert((int)boxes.size() >= WIN_NUM);
 			const int gtNumCrnt = boxesGT.size();
 			for (int j = 0; j < gtNumCrnt; j++){
@@ -911,7 +894,7 @@ void Objectness::evaluatePerClassRecall(vector<vector<Vec4i>> &boxesTests, CStr 
 				double maxIntUni = 0;
 				int* crNum = crNum1i.ptr<int>(clsGT[j]);
 				for (int k = 0; k < WIN_NUM; k++) {
-					double val = DataSetVOC::interUnio(boxes[k], boxesGT[j]);
+					double val = bbox_overlap(boxes[k], boxesGT[j]);
 					maxIntUni = max(maxIntUni, val);
 					crNum[k] += maxIntUni >= 0.5 ? 1 : 0;
 				}
@@ -919,7 +902,7 @@ void Objectness::evaluatePerClassRecall(vector<vector<Vec4i>> &boxesTests, CStr 
 		}
 	}
 
-	FILE* f = fopen(_S(_voc.resDir + saveName), "w"); {
+	FILE* f = fopen(_S(_voc->resDir + saveName), "w"); {
 		CV_Assert(f != NULL);
 		fprintf(f, "figure(1);\nhold on;\n\n\n");
 		vecD val(WIN_NUM), recallObjs(WIN_NUM), recallClss(WIN_NUM);
@@ -939,7 +922,7 @@ void Objectness::evaluatePerClassRecall(vector<vector<Vec4i>> &boxesTests, CStr 
 				recallClss[i] += val[i];
 				recallObjs[i] += crNum[i];
 			}
-			CStr className = _voc.classNames[c];
+			CStr className = _voc->classNames[c];
 			PrintVector(f, val, className);
 			fprintf(f, "plot(WinNum, %s, %s, 'linewidth', 2);\n", _S(className), COLORs[c % CN]);
 			leglendStr += format("'%s', ", _S(className));
@@ -1009,17 +992,17 @@ bool Objectness::matRead(const string& filename, Mat& _M){
 
 void Objectness::evaluatePAMI12(CStr &saveName)
 {
-	const int TEST_NUM = _voc.testSet.size();
+	const int TEST_NUM = _voc->testSet.size();
 	vector<vector<Vec4i>> boxesTests(TEST_NUM);
-	CStr dir = _voc.wkDir + "PAMI12/";
+	CStr dir = _voc->wkDir + "PAMI12/";
 	const int numDet = 1853;
 	for (int i = 0; i < TEST_NUM; i++){
-		FILE *f = fopen(_S(dir + _voc.testSet[i] + ".txt"), "r");
+		FILE *f = fopen(_S(dir + _voc->testSet[i] + ".txt"), "r");
 		double score;
 		boxesTests[i].resize(numDet);
 		for (int j = 0; j < numDet; j++){
 			Vec4i &v = boxesTests[i][j];
-			fscanf(f, "%d %d %d %d %g\n", &v[0], &v[1], &v[2], &v[3], &score);
+			fscanf(f, "%d %d %d %d %lg\n", &v[0], &v[1], &v[2], &v[3], &score);
 		}
 		fclose(f);
 	}
@@ -1030,12 +1013,12 @@ void Objectness::evaluatePAMI12(CStr &saveName)
 
 void Objectness::evaluateIJCV13(CStr &saveName)
 {
-	const int TEST_NUM = _voc.testSet.size();
+	const int TEST_NUM = _voc->testSet.size();
 	vector<vector<Vec4i>> boxesTests(TEST_NUM);
-	CStr dir = _voc.wkDir + "IJCV13/";
+	CStr dir = _voc->wkDir + "IJCV13/";
 	const int numDet = 10000;
 	for (int i = 0; i < TEST_NUM; i++){
-		FILE *f = fopen(_S(dir + _voc.testSet[i] + ".txt"), "r");
+		FILE *f = fopen(_S(dir + _voc->testSet[i] + ".txt"), "r");
 		boxesTests[i].resize(numDet);
 		for (int j = 0; j < numDet; j++){
 			Vec4i &v = boxesTests[i][j];
