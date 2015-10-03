@@ -51,10 +51,17 @@ private:
 };
 
 
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(get_windows_overloads, get_windows, 1, 2)
+
 BOOST_PYTHON_MODULE(bing) 
 {
-    class_<Bing>("Bing")
+    class_<Bing>("Bing", "Python Wrapper for Bing Objectness")
         .def("load", &Bing::load)
-        .def("get_windows", &Bing::get_windows)
+        .def("get_windows", &Bing::get_windows,
+                get_windows_overloads(
+                    args("img", "num_per_size"), 
+                    "Get the region proposals of an image"
+                    )
+                )
     ;
 }
