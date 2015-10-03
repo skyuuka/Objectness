@@ -2,6 +2,7 @@
 #include "Objectness.h"
 #include "ValStructVec.h"
 #include "CmShow.h"
+#include <memory>
 
 void RunObjectness(CStr &resName, double base, int W, int NSS, int numPerSz);
 
@@ -73,15 +74,14 @@ void RunCustomerImages(int argc, char* argv[])
     cout << "overwrite = " << overwrite << endl;
 
     srand((unsigned int)time(NULL));
-    DataSetVOC voc2007("/home/lin/data/VOCdevkit2007/VOC2007/");
-    voc2007.loadAnnotations();
+    DataSetVOC* voc2007 = new DataSetVOC("/data/VOCdevkit2007/VOC2007/"); 
+    voc2007->loadAnnotations();
     double base = 2;
     int W = 8;
     int NSS = 2;
     int numPerSz = 100;
-    printf("Dataset:`%s' with %d training and %d testing\n", _S(voc2007.wkDir), voc2007.trainNum, voc2007.testNum);
     printf("Base = %g, W = %d, NSS = %d, perSz = %d\n", base, W, NSS, numPerSz);
-    Objectness objNess(&voc2007, base, W, NSS);
+    Objectness objNess(voc2007, base, W, NSS);
     //objNess.trainObjectness(numPerSz);
     objNess.loadTrainedModel();
 
@@ -120,33 +120,6 @@ void RunCustomerImages(int argc, char* argv[])
 
 int main(int argc, char* argv[])
 {
-    //CStr wkDir = "D:/WkDir/DetectionProposals/VOC2007/Local/";
-    //illutrateLoG();
-    //RunObjectness("WinRecall.m", 2, 8, 2, 130);
     RunCustomerImages(argc, argv);
     return 0;
-}
-
-void RunObjectness(CStr &resName, double base, int W, int NSS, int numPerSz)
-{
-    srand((unsigned int)time(NULL));
-    //DataSetVOC voc2007("/home/bittnt/BING/BING_beta1/VOC/VOC2007/");
-    DataSetVOC voc2007("/home/lin/data/VOCdevkit2007/VOC2007/");
-    voc2007.loadAnnotations();
-    //voc2007.loadDataGenericOverCls();
-
-    printf("Dataset:`%s' with %d training and %d testing\n", _S(voc2007.wkDir), voc2007.trainNum, voc2007.testNum);
-    printf("%s Base = %g, W = %d, NSS = %d, perSz = %d\n", _S(resName), base, W, NSS, numPerSz);
-
-    Objectness objNess(&voc2007, base, W, NSS);
-
-    vector<vector<Vec4i> > boxesTests;
-    //objNess.getObjBndBoxesForTests(boxesTests, 250);
-    objNess.getObjBndBoxesForTestsFast(boxesTests, numPerSz);
-    //objNess.getRandomBoxes(boxesTests);
-
-    //objNess.evaluatePerClassRecall(boxesTests, resName, 1000);
-    //objNess.illuTestReults(boxesTests);
-    //objNess.evaluatePAMI12();
-    //objNess.evaluateIJCV13();
 }

@@ -16,8 +16,7 @@ const char* COLORs[CN] = {"'k'", "'b'", "'g'", "'r'", "'c'", "'m'", "'y'",
 
 // base for window size quantization, R orientation channels, and feature window size (_W, _W)
 Objectness::Objectness(DataSetVOC *voc, double base, int W, int NSS)
-	: _voc(voc)
-	, _base(base)
+	: _base(base)
 	, _W(W)
 	, _NSS(NSS)
 	, _logBase(log(_base))
@@ -26,6 +25,7 @@ Objectness::Objectness(DataSetVOC *voc, double base, int W, int NSS)
 	, _numT(_maxT - _minT + 1)
 	, _Clr(MAXBGR)
 {
+    _voc.reset(voc);
 	setColorSpace(_Clr);
 }
 
@@ -707,7 +707,7 @@ void Objectness::getObjBndBoxesForTestsFast(vector<vector<Vec4i>> &_boxesTests, 
 
 	const int TestNum = _voc->testSet.size();
 	vecM imgs3u(TestNum);
-	vector<ValStructVec<float, Vec4i>> boxesTests;
+	vector<ValStructVec<float, Vec4i> > boxesTests;
 	boxesTests.resize(TestNum);
 
 #pragma omp parallel for
