@@ -56,7 +56,7 @@ int Objectness::loadTrainedModel(string modelName) // Return -1, 0, or 1 if part
 	//normalize(filters1f, filters1f, p, 1, NORM_MINMAX);
 
 	normalize(filters1f, show3u, 1, 255, NORM_MINMAX, CV_8U);
-	CmShow::showTinyMat(_voc->resDir + "Filter.png", show3u);
+	//CmShow::showTinyMat(_voc->resDir + "Filter.png", show3u);
     _tigF.update(filters1f);
     _tigF.reconstruct(filters1f);
 
