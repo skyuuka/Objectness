@@ -19,4 +19,4 @@ add_subdirectory (tools)
 add_subdirectory (python)
 
 file(GLOB INC_FILES include/*.h include/*.hpp)
-install (FILES ${INC_FILES} DESTINATION include/bingojectness)
+install (FILES ${INC_FILES} DESTINATION include/bingobjectness)
