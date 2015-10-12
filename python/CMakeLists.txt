@@ -7,9 +7,9 @@ include_directories(opencv-ndarray-conversion)
 
 add_subdirectory (opencv-ndarray-conversion)
 
-python_add_module(bing bing.cpp)
+python_add_module(cBing bing.cpp)
 
-target_link_libraries(bing ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} 
+target_link_libraries(cBing ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} 
     opencv_ndarray_conversion
     bing_objectness_core bing_objectness_liblinear
     opencv_core opencv_imgproc opencv_legacy)

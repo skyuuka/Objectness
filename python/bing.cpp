@@ -53,7 +53,7 @@ private:
 
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(get_windows_overloads, get_windows, 1, 2)
 
-BOOST_PYTHON_MODULE(bing) 
+BOOST_PYTHON_MODULE(cBing) 
 {
     class_<Bing>("Bing", "Python Wrapper for Bing Objectness")
         .def("load", &Bing::load)
